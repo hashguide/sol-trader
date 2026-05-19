@@ -1,5 +1,5 @@
 {
-  "name": "solana-trading-bot",
+  "name": "sol-trader",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
