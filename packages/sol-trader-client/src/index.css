@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  
+  body {
+    @apply bg-bg-950 text-white font-body;
+    font-size: 14px;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2d38; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a3d48; }
+}
+
+@layer components {
+  .panel {
+    @apply bg-bg-800 border border-border rounded-lg;
+  }
+
+  .panel-header {
+    @apply px-4 py-3 border-b border-border flex items-center justify-between;
+  }
+
+  .btn-primary {
+    @apply bg-accent-green text-bg-950 font-mono font-semibold text-xs px-4 py-2 rounded 
+           hover:bg-opacity-90 transition-all duration-150 active:scale-95;
+  }
+
+  .btn-danger {
+    @apply bg-accent-red text-white font-mono font-semibold text-xs px-4 py-2 rounded 
+           hover:bg-opacity-90 transition-all duration-150 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply text-gray-400 font-mono text-xs px-3 py-2 rounded border border-border
+           hover:border-gray-500 hover:text-white transition-all duration-150;
+  }
+
+  .stat-card {
+    @apply bg-bg-700 rounded-lg p-4 border border-border;
+  }
+
+  .input-field {
+    @apply bg-bg-700 border border-border rounded px-3 py-2 text-sm font-mono
+           focus:outline-none focus:border-accent-green/50 transition-colors w-full;
+  }
+
+  .select-field {
+    @apply bg-bg-700 border border-border rounded px-3 py-2 text-sm font-mono
+           focus:outline-none focus:border-accent-green/50 transition-colors w-full;
+  }
+
+  .badge-paper {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-accent-blue/10 text-accent-blue border border-accent-blue/20;
+  }
+
+  .badge-live {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-accent-green/10 text-accent-green border border-accent-green/20;
+  }
+
+  .badge-running {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-accent-green/10 text-accent-green border border-accent-green/20;
+  }
+
+  .badge-stopped {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-gray-500/10 text-gray-500 border border-gray-500/20;
+  }
+
+  .pnl-positive { @apply text-accent-green; }
+  .pnl-negative { @apply text-accent-red; }
+  .pnl-neutral { @apply text-gray-400; }
+}
+
+.glow-green { box-shadow: 0 0 20px rgba(0, 255, 136, 0.1); }
+.glow-red { box-shadow: 0 0 20px rgba(255, 59, 92, 0.1); }
+
+.scanline {
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,136,0.01) 2px, rgba(0,255,136,0.01) 4px);
+  pointer-events: none;
+}
+
+.terminal-cursor::after {
+  content: '▊';
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }

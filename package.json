@@ -1,0 +1,18 @@
+{
+  "name": "solana-trading-bot",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/sol-trader-server",
+    "packages/sol-trader-client"
+  ],
+  "scripts": {
+    "install": "npm install --workspaces",
+    "dev": "concurrently \"npm run dev --workspace=sol-trader-server\" \"npm run dev --workspace=sol-trader-client\"",
+    "build": "npm run build --workspace=sol-trader-client && npm run build --workspace=sol-trader-server",
+    "start": "npm run start --workspace=sol-trader-server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
