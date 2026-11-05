@@ -1,0 +1,18 @@
+services:
+  meridian:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4472:4472"
+    environment:
+      TRADING_MODE: paper
+      ENGINE_AUTOSTART: "true"
+      WEB_BIND: 0.0.0.0
+      ENGINE_BIND: 127.0.0.1
+    volumes:
+      - meridian-data:/app/data
+    # The engine process keeps trading if the Next.js process dies.
+    # The container restarts only when the engine itself exits.
+
+volumes:
+  meridian-data:
