@@ -16,7 +16,12 @@ Two processes, one repository, one database.
 
 State lives in SQLite (WAL): settings, sessions, encrypted wallet keys, trades, the decision log, equity, alerts, and backtest reports. Wallet keys use AES-256-GCM. The master key is `SECRETS_KEY` or `data/secrets.key` (mode 0600). Logs redact private keys, passwords, and ciphertext. The desk never receives a key back after it is saved.
 
+## Workstation desk
+
+The desk is a single chart-centric workstation, not a stack of unrelated routes. Persistent status shows loop running/stopped, paper/live, stream health, and kill state. Pair selection drives the chart and a contextual inspector (signal, position, activity, gate). Positions and the decision journal sit in the activity dock. Research, risk, network/wallets, readiness, and system open as drawers (`/?panel=research`, etc.) or via ⌘K. Closing the browser does not stop the engine.
+
 ## Run locally
+
 
 ```bash
 npm install

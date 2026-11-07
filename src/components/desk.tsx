@@ -1,21 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { Badge, Button, Input, Label } from "@/components/ui";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Badge, Button, Input, Label, Toast } from "@/components/ui";
 import { cn, money, signed, tone } from "@/lib/format";
 import type { Snapshot } from "@/lib/types";
+import { loadInspectorTab, loadSelectedPair, saveInspectorTab, saveSelectedPair, type DrawerId, type InspectorTab } from "@/lib/workspace";
 
 type Phase = "loading" | "setup" | "login" | "ready" | "offline";
+type Feedback = { tone: "info" | "good" | "bad"; text: string } | null;
 
 interface Desk {
   snap: Snapshot | null;
   phase: Phase;
   offline: boolean;
   error: string | null;
+  feedback: Feedback;
+  busy: string | null;
+  selectedPairId: string;
+  setSelectedPairId: (id: string) => void;
+  inspectorTab: InspectorTab;
+  setInspectorTab: (tab: InspectorTab) => void;
+  drawer: DrawerId;
+  openDrawer: (id: DrawerId) => void;
   call: (path: string, init?: RequestInit) => Promise<unknown>;
   refresh: () => Promise<void>;
+  run: (name: string, path: string, init?: RequestInit, ok?: string) => Promise<boolean>;
+  setFeedback: (value: Feedback) => void;
 }
 
 const DeskContext = createContext<Desk | null>(null);
@@ -31,7 +42,24 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
+  const [selectedPairId, setSelectedPairIdState] = useState("sol-usdc");
+  const [inspectorTab, setInspectorTabState] = useState<InspectorTab>("signal");
+  const [drawer, setDrawer] = useState<DrawerId>(null);
+
+  const setSelectedPairId = useCallback((id: string) => {
+    setSelectedPairIdState(id);
+    saveSelectedPair(id);
+  }, []);
+
+  const setInspectorTab = useCallback((tab: InspectorTab) => {
+    setInspectorTabState(tab);
+    saveInspectorTab(tab);
+  }, []);
+
+  const openDrawer = useCallback((id: DrawerId) => setDrawer(id), []);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/state", { cache: "no-store" });
@@ -40,9 +68,19 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!res.ok) throw new Error("The engine refused the state request");
-    setSnap(await res.json() as Snapshot);
+    const next = await res.json() as Snapshot;
+    setSnap(next);
     setPhase("ready");
     setOffline(false);
+    setSelectedPairIdState((current) => {
+      if (next.pairs.some((pair) => pair.id === current)) return current;
+      const stored = loadSelectedPair(next.pairs[0]?.id ?? "sol-usdc");
+      return next.pairs.some((pair) => pair.id === stored) ? stored : (next.pairs[0]?.id ?? "sol-usdc");
+    });
+  }, []);
+
+  useEffect(() => {
+    setInspectorTabState(loadInspectorTab());
   }, []);
 
   useEffect(() => {
@@ -81,6 +119,12 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
     };
   }, [nonce, refresh]);
 
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(null), 4500);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
+
   const call = useCallback(async (path: string, init?: RequestInit) => {
     const res = await fetch(path, {
       ...init,
@@ -95,8 +139,30 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
     return body;
   }, []);
 
+  const run = useCallback(async (name: string, path: string, init?: RequestInit, ok?: string) => {
+    setBusy(name);
+    setFeedback(null);
+    try {
+      await call(path, init);
+      await refresh();
+      if (ok) setFeedback({ tone: "good", text: ok });
+      return true;
+    } catch (err) {
+      setFeedback({ tone: "bad", text: err instanceof Error ? err.message : "Request failed" });
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }, [call, refresh]);
+
+  const value = useMemo(() => ({
+    snap, phase, offline, error, feedback, busy,
+    selectedPairId, setSelectedPairId, inspectorTab, setInspectorTab,
+    drawer, openDrawer, call, refresh, run, setFeedback,
+  }), [snap, phase, offline, error, feedback, busy, selectedPairId, setSelectedPairId, inspectorTab, setInspectorTab, drawer, openDrawer, call, refresh, run]);
+
   return (
-    <DeskContext.Provider value={{ snap, phase, offline, error, call, refresh }}>
+    <DeskContext.Provider value={value}>
       {phase === "loading" ? <Screen title="Opening the journal" body="Reading the book the engine already keeps." /> : null}
       {phase === "offline" ? (
         <Screen title="Engine unreachable" body="This page is only a window. Start the engine process, then retry. Nothing here can trade on its own.">
@@ -104,7 +170,11 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
         </Screen>
       ) : null}
       {phase === "setup" || phase === "login" ? <Auth phase={phase} onDone={() => { setPhase("loading"); setNonce((n) => n + 1); }} onError={setError} error={error} /> : null}
-      {phase === "ready" && snap ? <Frame snap={snap} offline={offline}>{children}</Frame> : null}
+      {phase === "ready" && snap ? (
+        <Frame snap={snap} offline={offline} feedback={feedback}>
+          {children}
+        </Frame>
+      ) : null}
     </DeskContext.Provider>
   );
 }
@@ -177,45 +247,30 @@ function Auth({ phase, onDone, onError, error }: { phase: "setup" | "login"; onD
   );
 }
 
-const NAV = [
-  { href: "/", label: "Book" },
-  { href: "/markets", label: "Markets" },
-  { href: "/journal", label: "Journal" },
-  { href: "/research", label: "Research" },
-  { href: "/risk", label: "Risk" },
-  { href: "/network", label: "Network" },
-  { href: "/system", label: "System" },
-];
-
-function Frame({ snap, offline, children }: { snap: Snapshot; offline: boolean; children: React.ReactNode }) {
-  const path = usePathname();
-  const kill = snap.engine.kill.engaged;
+function Frame({ snap, offline, feedback, children }: { snap: Snapshot; offline: boolean; feedback: Feedback; children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-ink/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+      <a href="#workstation" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-brass focus:px-3 focus:py-2 focus:text-ink">Skip to workstation</a>
+      <header className="sticky top-0 z-30 border-b border-line bg-ink/95 backdrop-blur">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-3 py-2.5 sm:px-4">
           <Link href="/" className="font-serif text-2xl leading-none text-brass">Meridian</Link>
-          <span className="hidden text-[11px] uppercase tracking-[0.16em] text-fog sm:inline">Desk</span>
-          <div className="ml-auto flex items-center gap-2">
-            {offline ? <Badge tone="bad">stream down</Badge> : null}
+          <span className="hidden text-[11px] uppercase tracking-[0.16em] text-fog md:inline">Workstation</span>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            <Badge tone={snap.engine.running ? "good" : "neutral"}>{snap.engine.running ? `Loop #${snap.engine.iteration}` : "Idle"}</Badge>
             <Badge tone={snap.engine.mode === "live" ? "live" : "warn"}>{snap.engine.mode}</Badge>
-            {kill ? <Badge tone="bad">killed</Badge> : null}
+            {snap.engine.kill.engaged ? <Badge tone="bad">Killed</Badge> : null}
+            {offline ? <Badge tone="bad">Stream down</Badge> : <Badge tone="good">Live feed</Badge>}
             <span className={cn("font-mono text-sm", tone(snap.engine.dayPnl))}>{signed(snap.engine.dayPnl)}</span>
             <span className="font-mono text-sm text-paper">{money(snap.engine.paperEquity)}</span>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl flex-wrap gap-1 px-3 pb-2">
-          {NAV.map((item) => {
-            const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
-            return (
-              <Link key={item.href} href={item.href} className={cn("rounded-md px-3 py-1.5 text-sm", active ? "bg-panel-2 text-paper" : "text-fog hover:text-paper")}>
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        {feedback ? (
+          <div className="mx-auto max-w-[1400px] px-3 pb-2 sm:px-4">
+            <Toast tone={feedback.tone}>{feedback.text}</Toast>
+          </div>
+        ) : null}
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main id="workstation" className="mx-auto max-w-[1400px] px-2 py-3 sm:px-4 sm:py-4">{children}</main>
     </div>
   );
 }

@@ -15,5 +15,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["engine/**/*.ts", "src/shared/**/*.ts", "test/**/*.ts"]
+  "include": ["engine/**/*.ts", "src/shared/**/*.ts", "test/**/*.ts"],
+  "exclude": ["test/**/*.tsx"]
 }

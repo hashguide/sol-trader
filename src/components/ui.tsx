@@ -76,7 +76,7 @@ export function Dialog({ open, onOpenChange, title, children }: { open: boolean;
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/70" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-panel p-5 shadow-2xl">
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-panel p-5 shadow-2xl focus:outline-none">
           <div className="mb-4 flex items-start justify-between gap-4">
             <DialogPrimitive.Title className="font-serif text-2xl text-paper">{title}</DialogPrimitive.Title>
             <DialogPrimitive.Close className="text-fog hover:text-paper" aria-label="Close">
@@ -88,6 +88,60 @@ export function Dialog({ open, onOpenChange, title, children }: { open: boolean;
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   );
+}
+
+export function Sheet({ open, onOpenChange, title, description, children, wide = false }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; description?: string; children: React.ReactNode; wide?: boolean }) {
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/60 data-[state=open]:animate-in" />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col border-l border-line bg-panel shadow-2xl focus:outline-none sm:max-w-xl",
+            wide && "sm:max-w-2xl",
+          )}
+        >
+          <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+            <div>
+              <DialogPrimitive.Title className="font-serif text-2xl text-paper">{title}</DialogPrimitive.Title>
+              {description ? <DialogPrimitive.Description className="mt-1 text-sm text-fog">{description}</DialogPrimitive.Description> : null}
+            </div>
+            <DialogPrimitive.Close className="rounded-md p-1 text-fog hover:bg-panel-2 hover:text-paper" aria-label="Close panel">
+              <X className="h-4 w-4" />
+            </DialogPrimitive.Close>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (value: T) => void; options: { id: T; label: string }[] }) {
+  return (
+    <div role="tablist" className="inline-flex flex-wrap gap-1 rounded-md border border-line bg-ink p-1">
+      {options.map((option) => {
+        const active = option.id === value;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            className={cn("min-h-8 rounded px-2.5 py-1.5 text-xs", active ? "bg-panel-2 text-paper" : "text-fog hover:text-paper")}
+            onClick={() => onChange(option.id)}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Toast({ tone = "info", children }: { tone?: "info" | "good" | "bad"; children: React.ReactNode }) {
+  const colors = { info: "border-line text-fog", good: "border-mint/40 text-mint", bad: "border-rose/50 text-rose" };
+  return <div role="status" className={cn("rounded-md border bg-panel-2 px-3 py-2 text-sm", colors[tone])}>{children}</div>;
 }
 
 export function Panel({ className, ...props }: React.ComponentProps<"section">) {
